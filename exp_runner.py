@@ -1154,6 +1154,12 @@ class Runner:
             logging.info('Initialize all accum data to ones.')
 
             
+def set_seed(rand_seed):
+    torch.manual_seed(rand_seed)
+    torch.cuda.manual_seed(rand_seed)
+    np.random.seed(rand_seed)
+    torch.backends.cudnn.deterministic = True
+            
 if __name__ == '__main__':
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
     FORMAT = "[%(filename)s:%(lineno)s] %(message)s"
@@ -1173,6 +1179,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_render_peak', action= 'store_true', help='Novel view synthesis' )
     parser.add_argument('--scene_name', type=str, default='', help='Scene or scan name')
     args = parser.parse_args()
+
+    set_seed(20230407)
 
     torch.cuda.set_device(args.gpu)
     runner = Runner(args.conf, args.scene_name, args.mode, args.model_type, args.is_continue, args.checkpoint_id)
