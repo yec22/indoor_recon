@@ -12,7 +12,7 @@ from icecream import ic
 from scipy.spatial.transform import Rotation as Rot
 from scipy.spatial.transform import Slerp
 
-from utils.utils_image import read_images, write_image, write_images
+from utils.utils_image import read_images, read_npy, write_image, write_images
 from utils.utils_io import checkExistence, ensure_dir_existence, get_path_components, get_files_stem
 from utils.utils_geometry import get_pose_inv, get_world_normal, quat_to_rot, save_points
 
@@ -131,28 +131,24 @@ class Dataset:
         if self.use_normal:
             logging.info(f'[Use normal] Loading estimated normals...')
             normals_np = []
-            normal_mask_np = []
             normals_npz, stems_normal = read_images(f'{self.data_dir}/pred_normal', target_img_size=(w_img, h_img), img_ext='.npz')
             assert len(normals_npz) == self.n_images
             for i in tqdm(range(self.n_images)):
                 normal_img_curr = normals_npz[i]
-                
-                normal_mask = np.sum(normal_img_curr, axis=-1)
-                normal_mask = normal_mask > -3.0 + 1e-3
         
                 # transform to world coordinates
                 ex_i = torch.linalg.inv(self.pose_all[i])
                 img_normal_w = get_world_normal(normal_img_curr.reshape(-1, 3), ex_i).reshape(h_img, w_img,3)
 
                 normals_np.append(img_normal_w)
-                normal_mask_np.append(normal_mask)
                 
             self.normals_np = -np.stack(normals_np)   # reverse normal
             self.normals = torch.from_numpy(self.normals_np.astype(np.float32)).cpu()
             
-            self.normal_mask_np = np.stack(normal_mask_np)
+            self.normal_mask_np = read_npy(f'{self.data_dir}/mask', img_ext='.npy')
             self.normal_mask = torch.from_numpy(self.normal_mask_np).cpu()
-            print(self.normal_mask.dtype)
+            print(self.normal_mask.shape) # [N, H, W]
+            print(self.normal_mask.dtype) # float32
 
             debug_ = True
             if debug_ and IOUtils.checkExistence(f'{self.data_dir}/depth'):

@@ -112,6 +112,25 @@ def read_images(dir, target_img_size = None, interpolation=cv2.INTER_LINEAR, img
         img_stems.append(stem)
     return np.array(rgbs), img_stems
 
+def read_npy(dir, img_ext = '.npy'):
+    if img_ext == '.npy':
+        read_img = lambda path : np.load(path)
+    elif img_ext == '.npz':
+        read_img = lambda path : np.load(path)['arr_0']
+    elif img_ext in ['.png', '.jpg']:
+        read_img = lambda path : read_image(path)
+    else:
+        raise NotImplementedError
+
+    vec_path = sorted(glob.glob(f"{dir}/**{img_ext}"))
+
+    weight = []
+    for i in tqdm(range(len(vec_path))):
+        w = read_img(vec_path[i])
+        weight.append(w)
+
+    return np.array(weight)
+
 def get_planes_from_normalmap(dir_pred, thres_uncertain = 0):
     '''Get normals from normal map for indoor dataset (ScanNet), which was got by the following paper:
     Surface normal estimation with uncertainty

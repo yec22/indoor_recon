@@ -196,9 +196,7 @@ class NeuSLoss(nn.Module):
         # normal loss
         normals_fine_loss, mask_keep_gt_normal = 0.0, torch.ones(batch_size)
         if self.normal_weight > 0 and normals_target is not None:
-            normals_gt = normals_target # input_model['normals_gt']
-            normal_mask_out = torch.zeros(batch_size, 1).float()
-            normal_mask_out[normal_mask] = 1.0
+            normals_gt = normals_target
 
             normals_fine = render_out['normal']
             
@@ -208,7 +206,7 @@ class NeuSLoss(nn.Module):
 
             thres_clip_angle = -1
 
-            mask_use_normals_target = mask_use_normals_target * normal_mask_out
+            mask_use_normals_target = mask_use_normals_target * normal_mask
             normal_certain_weight = normal_certain_weight * mask_use_normals_target
             angular_error, mask_keep_gt_normal = TrainingUtils.get_angular_error(normals_fine, normals_gt, normal_certain_weight, thres_clip_angle)
 
