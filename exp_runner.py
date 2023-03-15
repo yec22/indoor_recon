@@ -221,7 +221,8 @@ class Runner:
 
         idx_img = image_perm[self.iter_step % self.dataset.n_images]
         self.curr_img_idx = idx_img
-        data, pixels_x, pixels_y,  normal_sample, planes_sample, subplanes_sample, normal_sample_mask = self.dataset.random_get_rays_at(idx_img, self.batch_size)
+        self.importance_sample = self.conf["train.importance_sample"]
+        data, pixels_x, pixels_y,  normal_sample, planes_sample, subplanes_sample, normal_sample_mask = self.dataset.random_get_rays_at(idx_img, self.batch_size, self.importance_sample, None)
         
         rays_o, rays_d, true_rgb, true_mask = data[:, :3], data[:, 3: 6], data[:, 6: 9], data[:, 9: 10]
         true_mask =  (true_mask > 0.5).float()

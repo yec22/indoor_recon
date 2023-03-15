@@ -150,6 +150,10 @@ class Dataset:
             print(self.normal_mask.shape) # [N, H, W]
             print(self.normal_mask.dtype) # float32
 
+            weight_np = read_npy(f'{self.data_dir}/weight', img_ext='.npy')
+            self.weight = torch.from_numpy(weight_np).cpu()
+            print(self.weight.shape) # [N, H, W]
+
             debug_ = True
             if debug_ and IOUtils.checkExistence(f'{self.data_dir}/depth'):
                 self.depths_np, stems_depth = read_images(f'{self.data_dir}/depth', target_img_size=(w_img, h_img), img_ext='.png')
@@ -456,11 +460,23 @@ class Dataset:
         rays_o = self.pose_all[img_idx, None, :3, 3].expand(rays_v.shape) # batch_size, 3
         return torch.cat([rays_o.cpu(), rays_v.cpu(), color, mask[:, :1]], dim=-1).cuda()    # batch_size, 10
         
-    def random_get_rays_at(self, img_idx, batch_size, pose = None):
+    def random_get_rays_at(self, img_idx, batch_size, importance_sample, pose = None):
         pose_cur = self.get_pose(img_idx, pose)
         
-        pixels_x = torch.randint(low=0, high=self.W, size=[batch_size])
-        pixels_y = torch.randint(low=0, high=self.H, size=[batch_size])
+        if importance_sample:
+            sample_num = batch_size // 3
+            pixels_x = torch.randint(low=0, high=self.W, size=[batch_size - sample_num]).cuda() # 0-640
+            pixels_y = torch.randint(low=0, high=self.H, size=[batch_size - sample_num]).cuda() # 0-480
+            weight = self.weight[img_idx] # [H, W]
+            weight = weight.reshape(-1)  # [H * W]
+            new_sample = torch.multinomial(weight, sample_num, replacement=True).cuda()
+            new_sample_x = new_sample % self.W   # 0-640
+            new_sample_y = new_sample // self.W  # 0-480
+            pixels_x = torch.cat([pixels_x, new_sample_x])
+            pixels_y = torch.cat([pixels_y, new_sample_y])
+        else:
+            pixels_x = torch.randint(low=0, high=self.W, size=[batch_size])
+            pixels_y = torch.randint(low=0, high=self.H, size=[batch_size])
             
         color = self.images[img_idx][(pixels_y, pixels_x)]    # batch_size, 3
         mask = self.masks[img_idx][(pixels_y, pixels_x)][:,None]     # batch_size, 1
