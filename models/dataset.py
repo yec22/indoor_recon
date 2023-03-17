@@ -71,6 +71,7 @@ class Dataset:
 
         self.use_planes = conf['use_planes']
         self.use_plane_offset_loss = conf['use_plane_offset_loss']
+        self.use_mask = conf['use_mask']
  
         path_cam = os.path.join(self.data_dir, './cameras_sphere.npz')  # cameras_sphere, cameras_linear_init
         camera_dict = np.load(path_cam)
@@ -146,6 +147,8 @@ class Dataset:
             self.normals = torch.from_numpy(self.normals_np.astype(np.float32)).cpu()
             
             self.normal_mask_np = read_npy(f'{self.data_dir}/mask', img_ext='.npy')
+            if not self.use_mask:
+                self.normal_mask_np = np.ones_like(self.normal_mask_np)
             self.normal_mask = torch.from_numpy(self.normal_mask_np).cpu()
             print(self.normal_mask.shape) # [N, H, W]
             print(self.normal_mask.dtype) # float32

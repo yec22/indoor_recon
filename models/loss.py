@@ -94,6 +94,7 @@ class NeuSLoss(nn.Module):
 
         self.depth_weight = conf['depth_weight']
         self.normal_weight = conf['normal_weight']
+        self.bias_weight = conf['bias_weight']
 
         self.normal_consistency_weight = conf['normal_consistency_weight']
         self.plane_offset_weight = conf['plane_offset_weight']
@@ -206,7 +207,7 @@ class NeuSLoss(nn.Module):
 
             thres_clip_angle = -1
 
-            mask_use_normals_target = mask_use_normals_target * normal_mask
+            mask_use_normals_target = mask_use_normals_target * normal_mask.unsqueeze(-1)
             normal_certain_weight = normal_certain_weight * mask_use_normals_target
             angular_error, mask_keep_gt_normal = TrainingUtils.get_angular_error(normals_fine, normals_gt, normal_certain_weight, thres_clip_angle)
 
@@ -226,6 +227,15 @@ class NeuSLoss(nn.Module):
             logs_summary.update({
                 'Loss/loss_depth': depths_fine_loss,
                 'Log/num_depth_target_use': mask_use_pts_target.sum().detach().cpu()
+            })
+        
+        bias_loss = 0.0
+        if self.bias_weight > 0:
+            pts = rays_o + depth * rays_d
+            sdf_error = sdf_network_fine.sdf(pts).squeeze()
+            bias_loss = F.l1_loss(sdf_error, torch.zeros_like(sdf_error), reduction='mean')
+            logs_summary.update({
+                'Loss/loss_bias': bias_loss
             })
 
         plane_loss_all = 0
@@ -284,7 +294,8 @@ class NeuSLoss(nn.Module):
                 plane_loss_all +\
                 background_loss * self.mask_weight +\
                 normals_fine_loss * self.normal_weight * self.get_warm_up_ratio()  + \
-                depths_fine_loss * self.depth_weight  #+ \
+                depths_fine_loss * self.depth_weight +\
+                bias_loss * self.bias_weight
 
         logs_summary.update({
             'Loss/loss': loss.detach().cpu(),
